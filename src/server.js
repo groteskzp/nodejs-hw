@@ -1,13 +1,21 @@
 import express from 'express';
 import cors from 'cors';
 import PinoHttp from 'pino-http';
+import PinoPretty from 'pino-pretty';
 import 'dotenv/config';
+
 
 const app = express();
 
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(PinoHttp());
+app.use(
+  PinoHttp({
+    transport: {
+      target: 'pino-pretty',
+    },
+  }),
+);
 app.use(cors());
 app.use(express.json());
 

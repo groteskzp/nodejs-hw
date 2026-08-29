@@ -1,21 +1,43 @@
 import createHttpError from 'http-errors';
-import * as notesServices from '../services/notesServices.js';
+import { Note } from '../models/note.js';
 
 export const getAllNotes = async (req, res) => {
   const { page, perPage, tag, search } = req.query;
-  const result = await notesServices.getAllNotes({
+  const skip = (page - 1) * perPage;
+  const notesQuery = Note.find();
+
+  if (search) {
+    notesQuery.where({
+      $or: [
+        { title: { $regex: search, $options: 'i' } },
+        { content: { $regex: search, $options: 'i' } },
+      ],
+    });
+  }
+
+  if (tag) {
+    notesQuery.where({ tag });
+  }
+
+  const [totalNotes, notes] = await Promise.all([
+    notesQuery.clone().countDocuments(),
+    notesQuery.skip(skip).limit(perPage).exec(),
+  ]);
+
+  const totalPages = Math.ceil(totalNotes / perPage);
+
+  res.status(200).json({
     page,
     perPage,
-    tag,
-    search,
+    totalNotes,
+    totalPages,
+    notes,
   });
-
-  res.status(200).json(result);
 };
 
 export const getNoteById = async (req, res) => {
   const { noteId } = req.params;
-  const note = await notesServices.getNoteById(noteId);
+  const note = await Note.findById(noteId);
 
   if (!note) {
     throw createHttpError(404, 'Note not found');
@@ -25,13 +47,13 @@ export const getNoteById = async (req, res) => {
 };
 
 export const createNote = async (req, res) => {
-  const note = await notesServices.createNote(req.body);
+  const note = await Note.create(req.body);
   res.status(201).json(note);
 };
 
 export const deleteNote = async (req, res) => {
   const { noteId } = req.params;
-  const note = await notesServices.deleteNote(noteId);
+  const note = await Note.findByIdAndDelete(noteId);
 
   if (!note) {
     throw createHttpError(404, 'Note not found');
@@ -42,7 +64,9 @@ export const deleteNote = async (req, res) => {
 
 export const updateNote = async (req, res) => {
   const { noteId } = req.params;
-  const note = await notesServices.updateNote(noteId, req.body);
+  const note = await Note.findByIdAndUpdate(noteId, req.body, {
+    returnDocument: 'after',
+  });
 
   if (!note) {
     throw createHttpError(404, 'Note not found');

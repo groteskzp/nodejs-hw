@@ -9,7 +9,7 @@ export const updateUserAvatar = async (req, res) => {
 
   const result = await saveFileToCloudinary(req.file.buffer, req.user._id);
 
-  await User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     req.user._id,
     {
       avatar: result.secure_url,
@@ -20,6 +20,6 @@ export const updateUserAvatar = async (req, res) => {
   );
 
   res.status(200).json({
-    url: result.secure_url,
+    url: user.avatar,
   });
 };
